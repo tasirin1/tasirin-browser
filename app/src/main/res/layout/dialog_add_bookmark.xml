@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <EditText
+        android:id="@+id/inputBookmarkTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/bookmark_title_hint"
+        android:singleLine="true"
+        android:layout_marginBottom="12dp" />
+
+    <EditText
+        android:id="@+id/inputBookmarkUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/bookmark_url_hint"
+        android:singleLine="true"
+        android:inputType="textUri" />
+</LinearLayout>

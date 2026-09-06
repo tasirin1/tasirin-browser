@@ -1,0 +1,180 @@
+name: Build APK
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Pastikan CHANGELOG diperbarui untuk perubahan kode
+        if: github.actor != 'dependabot[bot]'
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "null" ]; then
+            BASE="${{ github.event.before }}"
+          fi
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "Base commit tidak tersedia — lewati guard CHANGELOG."
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)
+          NEEDS_CHANGELOG=$(echo "$CHANGED" | grep -E '^(app/src/main/|app/build\.gradle\.kts$)' || true)
+          HAS_CHANGELOG=$(echo "$CHANGED" | grep -x 'CHANGELOG.md' || true)
+          if [ -n "$NEEDS_CHANGELOG" ] && [ -z "$HAS_CHANGELOG" ]; then
+            echo "::error::Perubahan kode wajib menyertakan update CHANGELOG.md"
+            echo "$NEEDS_CHANGELOG"
+            exit 1
+          fi
+          echo "Guard CHANGELOG: OK"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Set up Gradle (cache + verifikasi wrapper)
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Bump versionCode otomatis per build
+        run: |
+          CODE=$((100000 + ${{ github.run_number }}))
+          sed -i "s/versionCode = [0-9]*/versionCode = ${CODE}/" app/build.gradle.kts
+          echo "versionCode baru: ${CODE}"
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Lint & unit test
+        run: ./gradlew lintDebug testDebugUnitTest
+
+      - name: Tampilkan laporan lint
+        if: always()
+        run: cat app/build/reports/lint-results-debug.txt || true
+
+      - name: Coverage JaCoCo
+        run: |
+          ./gradlew jacocoTestReport jacocoTestCoverageVerification
+          python3 - <<'PY'
+          import glob, os, xml.etree.ElementTree as ET
+          files = glob.glob("app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
+          if not files:
+              print("::warning::Laporan JaCoCo tidak ditemukan")
+              raise SystemExit(0)
+          root = ET.parse(files[0]).getroot()
+          summary = []
+          for ctype in ("LINE", "BRANCH", "INSTRUCTION", "METHOD"):
+              covered = missed = 0
+              for c in root.iter("counter"):
+                  if c.get("type") == ctype:
+                      covered += int(c.get("covered", 0))
+                      missed += int(c.get("missed", 0))
+              total = covered + missed
+              if total:
+                  pct = covered / total
+                  line = f"- {ctype}: {pct:.1%} ({covered}/{total})"
+                  summary.append(line)
+                  print(f"JaCoCo {ctype}: {pct:.1%} ({covered}/{total})")
+          step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if step_summary and summary:
+              with open(step_summary, "a", encoding="utf-8") as fh:
+                  fh.write("### JaCoCo coverage (unit test)\n\n")
+                  fh.write("\n".join(summary) + "\n")
+          PY
+
+      - name: Build release APK (jika secret signing tersedia)
+        if: env.KEYSTORE_BASE64 != ''
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
+          ./gradlew assembleRelease \
+            -PstoreFile=keystore.jks \
+            -PstorePassword="$KEYSTORE_PASSWORD" \
+            -PkeyAlias="$KEY_ALIAS" \
+            -PkeyPassword="$KEY_PASSWORD"
+
+      - name: Verifikasi tanda tangan APK release
+        if: env.KEYSTORE_BASE64 != ''
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -z "$APK" ]; then echo "Tidak ada APK release"; exit 0; fi
+          EXPECT="c2785a618082683755eeae867e0a2e01f450b1fd448859d1ec21cf854c5713d1"
+          FP=$(keytool -printcert -jarfile "$APK" 2>/dev/null | grep -i "SHA-256" | awk '{print $NF}' | tr -d ':')
+          echo "Fingerprint APK: ${FP:-<tidak terbaca>}"
+          if [ -n "$FP" ] && [ "$FP" != "$EXPECT" ]; then
+            echo "::error::Fingerprint APK tidak cocok dengan kunci release resmi"
+            exit 1
+          fi
+          echo "Verifikasi tanda tangan OK"
+
+      - name: Cek ukuran APK (maks 5 MB)
+        if: always()
+        run: |
+          APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          if [ -n "$APK" ]; then
+            SIZE=$(stat -c%s "$APK")
+            MB=$(echo "scale=2; $SIZE / 1048576" | bc)
+            echo "Ukuran APK: ${MB} MB ($SIZE bytes)"
+            echo "### APK: ${MB} MB" >> $GITHUB_STEP_SUMMARY
+            if [ "$SIZE" -gt 5242880 ]; then
+              echo "::warning::APK melebihi 5 MB"
+            fi
+          fi
+
+      - name: Publish release v1.0
+        if: github.ref == 'refs/heads/main' && env.KEYSTORE_BASE64 != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          MAP=$(find app/build/outputs/mapping -name 'mapping.txt' | head -1)
+          if [ -z "$APK" ]; then exit 0; fi
+          gh release delete v1.0 --yes 2>/dev/null || true
+          ASSETS="$APK"
+          [ -n "$MAP" ] && ASSETS="$ASSETS $MAP"
+          gh release create v1.0 $ASSETS \
+            --title "v1.0" \
+            --latest \
+            --generate-notes
+          echo "Release v1.0 dipublikasikan"
+
+      - name: Audit rilis terbaru
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REL=$(gh release view v1.0 --json tagName -q '.tagName' 2>/dev/null || echo "")
+          if [ -z "$REL" ]; then echo "::warning::Release v1.0 tidak ditemukan"; exit 0; fi
+          APK=$(gh release view v1.0 --json assets -q '.assets[] | select(.name | endswith(".apk")) | .name' 2>/dev/null | head -1)
+          if [ -z "$APK" ]; then echo "::error::Release v1.0 tidak punya APK"; exit 1; fi
+          echo "Audit release OK: $REL / $APK"

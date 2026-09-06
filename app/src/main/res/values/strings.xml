@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tasirin Browser</string>
+    <string name="bookmark_add">Add bookmark</string>
+    <string name="bookmark_remove">Remove</string>
+    <string name="no_bookmarks">No bookmarks yet</string>
+    <string name="cursor_mode_on">Cursor: ON</string>
+    <string name="cursor_mode_off">Touch</string>
+    <string name="share">Share</string>
+    <string name="url_hint">Enter URL or search…</string>
+    <string name="bookmark_title_hint">Title</string>
+    <string name="bookmark_url_hint">URL</string>
+    <string name="dialog_add_bookmark">Add Bookmark</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_add">Add</string>
+</resources>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tasirin Browser — Browser Ringan Android</title>
+  <style>
+    :root { --primary: #1565C0; --bg: #FAFAFA; --card: #FFF; --text: #212121; --sub: #666; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .hero { background: linear-gradient(135deg, #0D47A1, #1565C0, #42A5F5); color: #FFF; padding: 80px 20px; text-align: center; }
+    .hero h1 { font-size: 2.5rem; margin-bottom: 12px; }
+    .hero p { font-size: 1.15rem; opacity: 0.9; max-width: 560px; margin: 0 auto; }
+    .hero .btn { display: inline-block; margin-top: 28px; padding: 14px 36px; background: #FFF; color: var(--primary); font-weight: 700; border-radius: 8px; text-decoration: none; font-size: 1.05rem; transition: transform .2s; }
+    .hero .btn:hover { transform: translateY(-2px); }
+    .features { max-width: 800px; margin: 60px auto; padding: 0 20px; }
+    .features h2 { text-align: center; font-size: 1.6rem; margin-bottom: 32px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    .card { background: var(--card); border-radius: 12px; padding: 28px 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); text-align: center; }
+    .card .icon { font-size: 2.2rem; margin-bottom: 12px; }
+    .card h3 { font-size: 1.05rem; margin-bottom: 8px; }
+    .card p { font-size: 0.9rem; color: var(--sub); line-height: 1.5; }
+    .stats { text-align: center; padding: 40px 20px; background: var(--card); margin: 0 20px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); max-width: 800px; margin: 60px auto; }
+    .stats .num { font-size: 2rem; font-weight: 700; color: var(--primary); }
+    .footer { text-align: center; padding: 40px 20px; color: var(--sub); font-size: 0.85rem; }
+    .footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>🌐 Tasirin Browser</h1>
+    <p>Browser Android ringan berbasis WebView dengan mode cursor on-screen untuk navigasi tanpa sentuh.</p>
+    <a class="btn" id="downloadBtn" href="#">Download APK</a>
+  </div>
+
+  <div class="features">
+    <h2>Fitur Utama</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="icon">⭐</div>
+        <h3>Bookmark</h3>
+        <p>Halaman utama menampilkan daftar bookmark favorit. Tap untuk buka langsung.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🖱️</div>
+        <h3>Mode Cursor</h3>
+        <p>Navigasi tanpa sentuh layar — gerakkan pointer pakai tombol panah, tap tengah untuk klik.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🔍</div>
+        <h3>Address Bar</h3>
+        <p>Masukkan URL atau kata kunci pencarian. Back & forward navigation tersedia.</p>
+      </div>
+      <div class="card">
+        <div class="icon">⚡</div>
+        <h3>Ringan</h3>
+        <p>APK di bawah 5 MB, WebView standar Android tanpa dependensi berat.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="statsSection">
+    <div style="display:flex;gap:40px;justify-content:center;flex-wrap:wrap;">
+      <div><div class="num" id="apkSize">—</div><div style="font-size:0.85rem;color:#666">Ukuran APK</div></div>
+      <div><div class="num" id="apkVersion">v1.0</div><div style="font-size:0.85rem;color:#666">Versi</div></div>
+      <div><div class="num">API 21+</div><div style="font-size:0.85rem;color:#666">Min Android</div></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Dibuat dengan ❤️ oleh <a href="https://github.com/tasirin1">Tasirin</a> · Source di <a href="https://github.com/tasirin1/tasirin-browser">GitHub</a></p>
+  </div>
+
+  <script>
+    (async function() {
+      const api = 'https://api.github.com/repos/tasirin1/tasirin-browser/releases/latest';
+      try {
+        const res = await fetch(api);
+        const data = await res.json();
+        if (data.tag_name) {
+          document.getElementById('apkVersion').textContent = data.tag_name;
+        }
+        const apk = (data.assets || []).find(a => a.name.endsWith('.apk'));
+        if (apk) {
+          const mb = (apk.size / 1048576).toFixed(1);
+          document.getElementById('apkSize').textContent = mb + ' MB';
+          document.getElementById('downloadBtn').href = apk.browser_download_url;
+        } else {
+          document.getElementById('downloadBtn').href = 'https://github.com/tasirin1/tasirin-browser/releases/latest';
+        }
+      } catch(e) {
+        document.getElementById('downloadBtn').href = 'https://github.com/tasirin1/tasirin-browser/releases/latest';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Globe icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28 C38.536,28 26,40.536 26,56 C26,71.464 38.536,84 54,84 C69.464,84 82,71.464 82,56 C82,40.536 69.464,28 54,28ZM54,80 C40.745,80 30,69.255 30,56 C30,42.745 40.745,32 54,32 C67.255,32 78,42.745 78,56 C78,69.255 67.255,80 54,80Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,36 C46.268,36 40,48.684 40,56 C40,63.316 46.268,76 54,76 C61.732,76 68,63.316 68,56 C68,48.684 61.732,36 54,36ZM54,72 C48.477,72 44,63.523 44,56 C44,48.477 48.477,44 54,44 C59.523,44 64,48.477 64,56 C64,63.523 59.523,72 54,72Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,40 L54,72"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"/>
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M28,56 L80,56"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"/>
+</vector>
