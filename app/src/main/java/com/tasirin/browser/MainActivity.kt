@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import androidx.activity.OnBackPressedCallback
 import android.webkit.*
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -60,6 +61,7 @@ class MainActivity : AppCompatActivity() {
         setupBookmarks()
         setupAddressBar()
         setupButtons()
+        setupBackDispatcher()
         cursorController = CursorController(this, webView)
 
         handleIntent(intent)
@@ -193,26 +195,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // Cursor mode: handle panah sebelum WebView
-        if (cursorController.dispatchKeyEvent(event ?: return false)) return true
-
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            if (cursorController.isCursorMode) {
-                cursorController.disable()
-                btnCursorMode.text = getString(R.string.cursor_mode_off)
-                btnCursorMode.setBackgroundColor(0xFF1565C0.toInt())
-                return true
-            }
-            if (webView.canGoBack()) {
-                webView.goBack()
-                return true
-            }
-            if (!bookmarksVisible) {
-                showBookmarks()
-                return true
-            }
+        // Cursor mode: handle panah (bukan BACK — BACK ditangani dispatcher)
+        if (keyCode != KeyEvent.KEYCODE_BACK && event != null) {
+            if (cursorController.dispatchKeyEvent(event)) return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    private fun setupBackDispatcher() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (cursorController.isCursorMode) {
+                    cursorController.disable()
+                    btnCursorMode.text = getString(R.string.cursor_mode_off)
+                    btnCursorMode.setBackgroundColor(0xFF1565C0.toInt())
+                } else if (webView.canGoBack()) {
+                    webView.goBack()
+                } else if (!bookmarksVisible) {
+                    showBookmarks()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
+        })
     }
 
     private fun loadUrl(url: String) {
