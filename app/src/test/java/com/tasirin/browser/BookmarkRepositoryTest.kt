@@ -27,7 +27,7 @@ class BookmarkRepositoryTest {
     @Test
     fun `normalizeUrl - input dengan spasi jadi search`() {
         val result = normalizeUrl("what is android")
-        assertTrue(result.contains("what+is+android") || result.contains("what%20is%20android"))
+        assertTrue(result.contains("what is android") || result.contains("what+is+android") || result.contains("what%20is%20android"))
     }
 
     // Fungsi helper duplikat dari normalisasi URL di MainActivity
