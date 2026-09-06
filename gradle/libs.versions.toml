@@ -1,8 +1,8 @@
-recyclerview = "1.4.0"
 [versions]
 agp = "9.4.0"
 coreKtx = "1.13.1"
 appcompat = "1.7.0"
+recyclerview = "1.4.0"
 activityKtx = "1.9.0"
 coroutinesAndroid = "1.11.0"
 junit = "4.13.2"
@@ -10,9 +10,9 @@ junit = "4.13.2"
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutinesAndroid" }
-androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
