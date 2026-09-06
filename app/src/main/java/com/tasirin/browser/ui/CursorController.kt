@@ -245,7 +245,7 @@ class CursorController(
 
     private fun clickAtCursor() {
         // Konversi koordinat cursor ke posisi WebView
-        val result = FloatArray(2)
+        val result = IntArray(2)
         webView.getLocationOnScreen(result)
         val webX = cursorX
         val webY = cursorY
