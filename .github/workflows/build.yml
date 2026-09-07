@@ -128,7 +128,7 @@ jobs:
         run: |
           APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
           if [ -z "$APK" ]; then echo "Tidak ada APK release"; exit 0; fi
-          EXPECT="c227c46b2c25433cd72686fbd27aab8f59f7b244415dfe5a10aa7100ac0592c4"
+          EXPECT="c2785a618082683755eeae867e0a2e01f450b1fd448859d1ec21cf854c5713d1"
           FP=$(keytool -printcert -jarfile "$APK" 2>/dev/null | grep -i "SHA-256" | awk '{print $NF}' | tr -d ':')
           echo "Fingerprint APK: ${FP:-<tidak terbaca>}"
           if [ -n "$FP" ] && [ "$FP" != "$EXPECT" ]; then

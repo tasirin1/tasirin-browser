@@ -51,4 +51,4 @@ Baca file ini SEBELUM mengubah, memperbaiki, atau mengelola repository ini.
 7. **Changelog wajib** untuk perubahan `app/src/main`.
 8. **Lint & unit test hijau** sebelum merge.
 9. **Secrets**: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
-10. **Keystore fingerprint**: `c227c46b2c25433cd72686fbd27aab8f59f7b244415dfe5a10aa7100ac0592c4`.
+10. **Keystore fingerprint**: `c2785a618082683755eeae867e0a2e01f450b1fd448859d1ec21cf854c5713d1`.

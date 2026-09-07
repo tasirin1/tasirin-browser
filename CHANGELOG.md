@@ -5,4 +5,5 @@
 - **Fix: gunakan `OnBackPressedCallback` alih-alih `onKeyDown(KEYCODE_BACK)`** -- targetSdk 36 memaksa predictive back; lint gagal pada `onKeyDown` untuk tombol back. Pindah ke `OnBackPressedDispatcher` dengan callback, sedangkan `onKeyDown` hanya menangani D-pad/cursor mode.
 - **Fix: turunkan ambang JaCoCo ke 0% untuk rilis awal** -- Cakupan JVM baru diukur; threshold bisa dinaikkan setelah penambahan test.
 - **Feat: keystore signing tersedia** -- Keystore baru dibuat untuk repo ini (fingerprint `c227c46b...`); secrets sudah di-set di GitHub.
+- **Fix: fingerprint keystore dikembalikan ke official `c2785a61...`** -- Keystore shared dengan download manager dipakai; secrets sudah di-set dari backup lokal.
 - **Initial release** — Browser Android ringan berbasis WebView dengan halaman bookmark utama, mode cursor on-screen untuk navigasi tanpa sentuh (D-pad / tombol), address bar dengan back/forward, bookmark management (tambah/hapus), dan menu (share, refresh, clear cache). minSdk 21, targetSdk 36.
