@@ -19,6 +19,26 @@ android {
     }
 
     buildTypes {
+        // Key signing release dibaca dari properti CLI yang di-set workflow
+        // (storeFile, storePassword, keyAlias, keyPassword). Bila absent,
+        // release tetap unsigned (aman untuk verifikasi/PR).
+        signingConfigs {
+            create("release") {
+                val storeFileProp = project.findProperty("storeFile") as String?
+                val storePasswordProp = project.findProperty("storePassword") as String?
+                val keyAliasProp = project.findProperty("keyAlias") as String?
+                val keyPasswordProp = project.findProperty("keyPassword") as String?
+                if (!storeFileProp.isNullOrBlank() && !storePasswordProp.isNullOrBlank() &&
+                    !keyAliasProp.isNullOrBlank() && !keyPasswordProp.isNullOrBlank()
+                ) {
+                    storeFile = rootProject.file(storeFileProp)
+                    storePassword = storePasswordProp
+                    keyAlias = keyAliasProp
+                    keyPassword = keyPasswordProp
+                }
+            }
+        }
+
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -26,6 +46,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val signing = signingConfigs.getByName("release")
+            val storeFile = signing.storeFile
+            if (storeFile != null && storeFile.exists()) {
+                signingConfig = signing
+            }
         }
     }
 

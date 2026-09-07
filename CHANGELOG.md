@@ -1,4 +1,9 @@
 ## [Unreleased]
+- **Fix: release APK selalu unsigned** -- `build.gradle.kts` tidak punya
+  `signingConfigs`, jadi workflow mem-publish `app-release-unsigned.apk`.
+  Tambah `signingConfigs.release` yang membaca properti CLI (`storeFile`,
+  `storePassword`, `keyAlias`, `keyPassword`) dari workflow; release berkas
+  sekarang menghasilkan APK yang ditandatangani keystore resmi.
 - **Fix: gunakan `kotlin { compilerOptions }` DSL** -- AGP 9 dengan KGP 2.x (built-in Kotlin) menghapus blok `kotlinOptions`; gunakan `compilerOptions` di blok `kotlin` tingkat atas.
 - **Fix: `getLocationOnScreen` pakai `IntArray`** -- Tipe array tidak cocok (FloatArray vs IntArray) untuk `View.getLocationOnScreen()` — parameter wajib IntArray.
 - **Fix: uji normalizeUrl menerima spasi literal** -- Assertion test sebelumnya hanya mencari encoded (`+` / `%20`), padahal helper tidak memanggil `Uri.encode`.
