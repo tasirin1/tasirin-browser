@@ -1,4 +1,10 @@
 ## [Unreleased]
+- **Fix: force close saat toggle mode cursor** -- `CursorController` memakai
+  `WindowManager` + `TYPE_APPLICATION_OVERLAY` yang butuh permission
+  `SYSTEM_ALERT_WINDOW` (tidak diminta; di Android 15 lempar
+  `BadTokenException` yang tidak di-catch). Ganti ke overlay dalam-layout:
+  cursor & D-pad ditempel langsung ke parent WebView sehingga tidak butuh
+  permission overlay sama sekali.
 - **Fix: release APK selalu unsigned** -- `build.gradle.kts` tidak punya
   `signingConfigs`, jadi workflow mem-publish `app-release-unsigned.apk`.
   Tambah `signingConfigs.release` yang membaca properti CLI (`storeFile`,

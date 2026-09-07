@@ -3,13 +3,11 @@ package com.tasirin.browser.ui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
-import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -20,13 +18,15 @@ import kotlin.math.min
  * Controller cursor on-screen untuk mode navigasi tanpa sentuh.
  * Pemicu panah (D-pad / tombol on-screen) menggerakkan pointer;
  * tombol tengah / tap pada tombol aksi melakukan klik di posisi pointer.
+ *
+ * Overlay ditempel langsung ke parent WebView (bukan WindowManager) supaya
+ * tidak butuh permission SYSTEM_ALERT_WINDOW dan tidak crash di versi Android
+ * mana pun (TYPE_APPLICATION_OVERLAY hanya tersedia API 26+).
  */
 class CursorController(
     private val context: Context,
     private val webView: android.webkit.WebView
 ) {
-    private val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
     private var isActive = false
     private var cursorX = 0f
     private var cursorY = 0f
@@ -48,9 +48,9 @@ class CursorController(
     fun enable() {
         if (isActive) return
         isActive = true
-        // Posisikan di tengah layar
-        cursorX = webView.width / 2f
-        cursorY = webView.height / 2f
+        val (maxX, maxY) = overlaySize()
+        cursorX = max(0f, min(maxX, maxX / 2f))
+        cursorY = max(0f, min(maxY, maxY / 2f))
         showCursor()
         showDpad()
     }
@@ -86,44 +86,23 @@ class CursorController(
             scaleType = ImageView.ScaleType.CENTER_INSIDE
         }
         val size = (48 * context.resources.displayMetrics.density).toInt()
-        val params = WindowManager.LayoutParams(
-            size, size,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = cursorX.toInt()
-            y = cursorY.toInt()
-        }
-        try {
-            wm.addView(iv, params)
-        } catch (_: SecurityException) {
-            // Izin overlay belum diberikan — gunakan cara alternatif
-            addCursorToView(iv)
-        }
-        cursorView = iv
+        addCursorToView(iv, size)
     }
 
-    private fun addCursorToView(iv: ImageView) {
-        val params = FrameLayout.LayoutParams(
-            (32 * context.resources.displayMetrics.density).toInt(),
-            (32 * context.resources.displayMetrics.density).toInt()
-        ).apply {
+    private fun addCursorToView(iv: ImageView, size: Int) {
+        val parent = webView.parent as? ViewGroup ?: return
+        val params = FrameLayout.LayoutParams(size, size).apply {
             leftMargin = cursorX.toInt()
             topMargin = cursorY.toInt()
         }
         iv.layoutParams = params
-        (webView.parent as? ViewGroup)?.addView(iv)
+        parent.addView(iv)
         cursorView = iv
     }
 
     private fun hideCursor() {
         cursorView?.let { v ->
-            try { wm.removeView(v) } catch (_: Exception) {
-                (v.parent as? ViewGroup)?.removeView(v)
-            }
+            (v.parent as? ViewGroup)?.removeView(v)
         }
         cursorView = null
     }
@@ -172,26 +151,11 @@ class CursorController(
         container.addView(rowDown)
 
         val size = (180 * density).toInt()
-        val params = WindowManager.LayoutParams(
-            size, size,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.BOTTOM or Gravity.END
-            x = (16 * density).toInt()
-            y = (100 * density).toInt()
-        }
-        try {
-            wm.addView(container, params)
-        } catch (_: SecurityException) {
-            addDpadToView(container)
-        }
-        dpadView = container
+        addDpadToView(container)
     }
 
     private fun addDpadToView(container: View) {
+        val parent = webView.parent as? ViewGroup ?: return
         val density = context.resources.displayMetrics.density
         val params = FrameLayout.LayoutParams(
             (180 * density).toInt(),
@@ -202,22 +166,27 @@ class CursorController(
             bottomMargin = (100 * density).toInt()
         }
         container.layoutParams = params
-        (webView.parent as? ViewGroup)?.addView(container)
+        parent.addView(container)
         dpadView = container
     }
 
     private fun hideDpad() {
         dpadView?.let { v ->
-            try { wm.removeView(v) } catch (_: Exception) {
-                (v.parent as? ViewGroup)?.removeView(v)
-            }
+            (v.parent as? ViewGroup)?.removeView(v)
         }
         dpadView = null
     }
 
+    private fun overlaySize(): Pair<Float, Float> {
+        val w = webView.width
+        val h = webView.height
+        if (w > 0 && h > 0) return w.toFloat() to h.toFloat()
+        val dm = context.resources.displayMetrics
+        return dm.widthPixels.toFloat() to dm.heightPixels.toFloat()
+    }
+
     private fun move(dx: Float, dy: Float) {
-        val maxX = webView.width.toFloat()
-        val maxY = webView.height.toFloat()
+        val (maxX, maxY) = overlaySize()
         cursorX = max(0f, min(maxX, cursorX + dx))
         cursorY = max(0f, min(maxY, cursorY + dy))
         updateCursorPosition()
@@ -225,28 +194,16 @@ class CursorController(
 
     private fun updateCursorPosition() {
         cursorView?.let { v ->
-            if (v.parent is WindowManager) {
-                val p = v.layoutParams as? WindowManager.LayoutParams
-                if (p != null) {
-                    p.x = cursorX.toInt()
-                    p.y = cursorY.toInt()
-                    wm.updateViewLayout(v, p)
-                }
-            } else {
-                val p = v.layoutParams as? FrameLayout.LayoutParams
-                if (p != null) {
-                    p.leftMargin = cursorX.toInt()
-                    p.topMargin = cursorY.toInt()
-                    v.layoutParams = p
-                }
+            val p = v.layoutParams as? FrameLayout.LayoutParams
+            if (p != null) {
+                p.leftMargin = cursorX.toInt()
+                p.topMargin = cursorY.toInt()
+                v.layoutParams = p
             }
         }
     }
 
     private fun clickAtCursor() {
-        // Konversi koordinat cursor ke posisi WebView
-        val result = IntArray(2)
-        webView.getLocationOnScreen(result)
         val webX = cursorX
         val webY = cursorY
 
