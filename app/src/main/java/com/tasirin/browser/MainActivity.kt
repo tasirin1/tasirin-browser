@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
         setupAddressBar()
         setupButtons()
         setupBackDispatcher()
-        cursorController = CursorController(this, webView)
+        cursorController = CursorController(this, findViewById(android.R.id.content))
 
         handleIntent(intent)
     }

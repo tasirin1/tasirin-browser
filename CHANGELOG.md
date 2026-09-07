@@ -1,4 +1,9 @@
 ## [Unreleased]
+- **Feat: cursor mode mengontrol seluruh layar** -- Sebelumnya cursor hanya
+  bekerja di WebView (toolbar & tombol tidak bisa di-klik via cursor). Sekarang
+  overlay cursor & D-pad ditempel di `android.R.id.content` dan klik di-dispatch
+  ke root sehingga semua kontrol (toolbar, address bar, WebView, bookmarks)
+  bisa dioperasikan full lewat cursor / D-pad.
 - **Fix: force close saat toggle mode cursor** -- `CursorController` memakai
   `WindowManager` + `TYPE_APPLICATION_OVERLAY` yang butuh permission
   `SYSTEM_ALERT_WINDOW` (tidak diminta; di Android 15 lempar

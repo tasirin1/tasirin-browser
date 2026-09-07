@@ -16,16 +16,17 @@ import kotlin.math.min
 
 /**
  * Controller cursor on-screen untuk mode navigasi tanpa sentuh.
- * Pemicu panah (D-pad / tombol on-screen) menggerakkan pointer;
- * tombol tengah / tap pada tombol aksi melakukan klik di posisi pointer.
+ * Mengontrol SELURUH layar (toolbar + WebView + bookmarks).
  *
- * Overlay ditempel langsung ke parent WebView (bukan WindowManager) supaya
- * tidak butuh permission SYSTEM_ALERT_WINDOW dan tidak crash di versi Android
- * mana pun (TYPE_APPLICATION_OVERLAY hanya tersedia API 26+).
+ * Cursor & D-pad ditempel ke rootContainer (android.R.id.content) supaya
+ * tidak butuh permission SYSTEM_ALERT_WINDOW.
+ *
+ * Alur klik: cursor posisi → rootContainer.dispatchTouchEvent → propagate
+ * ke view apapun di posisi tersebut (toolbar buttons, WebView, bookmark list, dll).
  */
 class CursorController(
     private val context: Context,
-    private val webView: android.webkit.WebView
+    private val rootContainer: ViewGroup
 ) {
     private var isActive = false
     private var cursorX = 0f
@@ -33,9 +34,7 @@ class CursorController(
     private val step = 40f
     private val longStep = 160f
 
-    // Overlay cursor
     private var cursorView: ImageView? = null
-    // On-screen D-pad overlay
     private var dpadView: View? = null
 
     val isCursorMode: Boolean get() = isActive
@@ -77,26 +76,27 @@ class CursorController(
         return false
     }
 
+    /* ---------- cursor overlay ---------- */
+
     @SuppressLint("ClickableViewAccessibility")
     private fun showCursor() {
+        val density = context.resources.displayMetrics.density
         val iv = ImageView(context).apply {
             setImageResource(android.R.drawable.ic_menu_mylocation)
             setColorFilter(Color.parseColor("#FF4081"))
             alpha = 0.9f
             scaleType = ImageView.ScaleType.CENTER_INSIDE
+            isClickable = false
+            isFocusable = false
         }
-        val size = (48 * context.resources.displayMetrics.density).toInt()
-        addCursorToView(iv, size)
-    }
-
-    private fun addCursorToView(iv: ImageView, size: Int) {
-        val parent = webView.parent as? ViewGroup ?: return
+        val size = (48 * density).toInt()
         val params = FrameLayout.LayoutParams(size, size).apply {
             leftMargin = cursorX.toInt()
             topMargin = cursorY.toInt()
         }
         iv.layoutParams = params
-        parent.addView(iv)
+        iv.elevation = 10f * density
+        rootContainer.addView(iv)
         cursorView = iv
     }
 
@@ -107,6 +107,8 @@ class CursorController(
         cursorView = null
     }
 
+    /* ---------- D-pad overlay ---------- */
+
     @SuppressLint("ClickableViewAccessibility")
     private fun showDpad() {
         val density = context.resources.displayMetrics.density
@@ -114,19 +116,19 @@ class CursorController(
         val pad = (4 * density).toInt()
 
         fun makeBtn(label: String, onClick: () -> Unit): View {
-            val btn = android.widget.TextView(context).apply {
+            return android.widget.TextView(context).apply {
                 text = label
                 textSize = 18f
                 setTextColor(Color.WHITE)
                 setBackgroundColor(Color.parseColor("#66000000"))
                 gravity = Gravity.CENTER
+                isClickable = true
                 layoutParams = LinearLayout.LayoutParams(btnSize, btnSize).apply {
                     marginStart = pad; marginEnd = pad
                     topMargin = pad; bottomMargin = pad
                 }
                 setOnClickListener { onClick() }
             }
-            return btn
         }
 
         val container = LinearLayout(context).apply {
@@ -134,39 +136,36 @@ class CursorController(
             gravity = Gravity.CENTER
             setPadding(pad, pad, pad, pad)
             setBackgroundColor(Color.parseColor("#33000000"))
+            setOnTouchListener { _, _ -> true } // tutup touch biar tidak tembus ke toolbar/WebView
         }
 
-        val rowUp = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        rowUp.addView(makeBtn("▲") { move(0f, -step) })
-        container.addView(rowUp)
-
-        val rowMid = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        rowMid.addView(makeBtn("◀") { move(-step, 0f) })
-        rowMid.addView(makeBtn("●") { clickAtCursor() })
-        rowMid.addView(makeBtn("▶") { move(step, 0f) })
-        container.addView(rowMid)
-
-        val rowDown = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        rowDown.addView(makeBtn("▼") { move(0f, step) })
-        container.addView(rowDown)
+        container.addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(makeBtn("▲") { move(0f, -step) })
+        })
+        container.addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(makeBtn("◀") { move(-step, 0f) })
+            addView(makeBtn("●") { clickAtCursor() })
+            addView(makeBtn("▶") { move(step, 0f) })
+        })
+        container.addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(makeBtn("▼") { move(0f, step) })
+        })
 
         val size = (180 * density).toInt()
-        addDpadToView(container)
-    }
-
-    private fun addDpadToView(container: View) {
-        val parent = webView.parent as? ViewGroup ?: return
-        val density = context.resources.displayMetrics.density
-        val params = FrameLayout.LayoutParams(
-            (180 * density).toInt(),
-            (180 * density).toInt(),
-            Gravity.BOTTOM or Gravity.END
-        ).apply {
+        val params = FrameLayout.LayoutParams(size, size).apply {
+            gravity = Gravity.BOTTOM or Gravity.END
             marginEnd = (16 * density).toInt()
             bottomMargin = (100 * density).toInt()
         }
         container.layoutParams = params
-        parent.addView(container)
+        container.elevation = 10f * density
+        rootContainer.addView(container)
         dpadView = container
     }
 
@@ -177,9 +176,11 @@ class CursorController(
         dpadView = null
     }
 
+    /* ---------- helper ---------- */
+
     private fun overlaySize(): Pair<Float, Float> {
-        val w = webView.width
-        val h = webView.height
+        val w = rootContainer.width
+        val h = rootContainer.height
         if (w > 0 && h > 0) return w.toFloat() to h.toFloat()
         val dm = context.resources.displayMetrics
         return dm.widthPixels.toFloat() to dm.heightPixels.toFloat()
@@ -194,32 +195,21 @@ class CursorController(
 
     private fun updateCursorPosition() {
         cursorView?.let { v ->
-            val p = v.layoutParams as? FrameLayout.LayoutParams
-            if (p != null) {
-                p.leftMargin = cursorX.toInt()
-                p.topMargin = cursorY.toInt()
-                v.layoutParams = p
-            }
+            val p = v.layoutParams as? FrameLayout.LayoutParams ?: return
+            p.leftMargin = cursorX.toInt()
+            p.topMargin = cursorY.toInt()
+            v.layoutParams = p
         }
     }
 
     private fun clickAtCursor() {
-        val webX = cursorX
-        val webY = cursorY
-
         val downTime = System.currentTimeMillis()
-        val event = MotionEvent.obtain(
-            downTime, downTime,
-            MotionEvent.ACTION_DOWN, webX, webY, 0
-        )
-        webView.dispatchTouchEvent(event)
-        event.recycle()
+        val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, cursorX, cursorY, 0)
+        rootContainer.dispatchTouchEvent(down)
+        down.recycle()
 
-        val upEvent = MotionEvent.obtain(
-            downTime, System.currentTimeMillis() + 50,
-            MotionEvent.ACTION_UP, webX, webY, 0
-        )
-        webView.dispatchTouchEvent(upEvent)
-        upEvent.recycle()
+        val up = MotionEvent.obtain(downTime, downTime + 50, MotionEvent.ACTION_UP, cursorX, cursorY, 0)
+        rootContainer.dispatchTouchEvent(up)
+        up.recycle()
     }
 }
