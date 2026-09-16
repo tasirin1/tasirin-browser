@@ -55,7 +55,10 @@ jobs:
           java-version: 17
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v4.0.1
+        with:
+          # Package 'tools' sudah deprecated di sdkmanager baru dan membuat setup gagal
+          packages: platform-tools
 
       - name: Set up Gradle (cache + verifikasi wrapper)
         uses: gradle/actions/setup-gradle@v6
